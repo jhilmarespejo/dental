@@ -1,0 +1,262 @@
+// Fonts
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+// Variables
+@import 'variables';
+
+// Bootstrap
+@import 'bootstrap/scss/bootstrap';
+
+// Font Awesome
+@import '@fortawesome/fontawesome-free/css/all.css';
+
+// Custom styles
+:root {
+  --primary-color: #4e73df;
+  --secondary-color: #1cc88a;
+  --accent-color: #36b9cc;
+  --danger-color: #e74a3b;
+  --warning-color: #f6c23e;
+  --info-color: #36b9cc;
+  --light-color: #f8f9fc;
+  --dark-color: #5a5c69;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #f8f9fc;
+}
+
+// Sidebar styling
+.sidebar {
+  min-height: 100vh;
+  box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+  z-index: 1;
+  background: linear-gradient(180deg, var(--primary-color) 10%, var(--accent-color) 100%);
+  
+  .nav-item {
+    position: relative;
+    
+    .nav-link {
+      color: rgba(255, 255, 255, 0.8);
+      padding: 0.75rem 1rem;
+      
+      &:hover, &:active {
+        color: white;
+      }
+      
+      i {
+        margin-right: 0.5rem;
+      }
+    }
+  }
+  
+  .sidebar-brand {
+    height: 4.5rem;
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    .sidebar-brand-icon {
+      margin-right: 0.5rem;
+    }
+  }
+}
+
+// Main content styling
+.content-area {
+  padding: 1.5rem;
+}
+
+// Custom card styling
+.card {
+  border: none;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+  margin-bottom: 1.5rem;
+  
+  .card-header {
+    background-color: white;
+    border-bottom: 1px solid #e3e6f0;
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--dark-color);
+    display: flex;
+    align-items: center;
+    
+    i {
+      margin-right: 0.5rem;
+      color: var(--primary-color);
+    }
+  }
+}
+
+// Dashboard cards
+.info-card {
+  border-left: 0.25rem solid;
+  
+  &.primary { border-left-color: var(--primary-color); }
+  &.success { border-left-color: var(--secondary-color); }
+  &.info { border-left-color: var(--info-color); }
+  &.warning { border-left-color: var(--warning-color); }
+  
+  .info-card-title {
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--dark-color);
+  }
+  
+  .info-card-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--dark-color);
+  }
+  
+  i {
+    font-size: 2rem;
+    opacity: 0.3;
+  }
+}
+
+// Custom buttons
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  
+  &:hover {
+    background-color: darken(#4e73df, 10%);
+    border-color: darken(#4e73df, 10%);
+  }
+}
+
+.btn-success {
+  background-color: var(--secondary-color);
+  border-color: var(--secondary-color);
+  
+  &:hover {
+    background-color: darken(#1cc88a, 10%);
+    border-color: darken(#1cc88a, 10%);
+  }
+}
+
+// Top navigation
+.top-nav {
+  box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+  background-color: white;
+  padding: 0.5rem 1rem;
+  
+  .dropdown-menu {
+    border: none;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+  }
+}
+
+// Appointments calendar
+.fc-event {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+// Patient section
+.patient-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dark-color);
+  font-size: 2rem;
+}
+
+// Treatment history timeline
+.treatment-timeline {
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 0;
+    height: 100%;
+    width: 2px;
+    background-color: #e9ecef;
+  }
+  
+  .timeline-item {
+    position: relative;
+    padding-left: 30px;
+    padding-bottom: 1.5rem;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background-color: var(--primary-color);
+    }
+  }
+}
+
+// Data tables
+.dataTables_wrapper {
+  .dataTables_paginate {
+    .paginate_button.current {
+      background: var(--primary-color) !important;
+      color: white !important;
+      border: 1px solid var(--primary-color) !important;
+    }
+  }
+}
+
+// Loader
+.loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  
+  .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    color: var(--primary-color);
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    width: 100%;
+    height: auto;
+    min-height: auto;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    
+    &.show {
+      transform: translateX(0);
+    }
+  }
+  
+  .content-area {
+    margin-left: 0 !important;
+  }
+}
