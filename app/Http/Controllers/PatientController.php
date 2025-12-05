@@ -2,7 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Patient;
+use App\Models\TreatmentPerformed;
+use App\Models\Appointment;
+use App\Models\Professional;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class PatientController extends Controller
 {
@@ -11,103 +18,50 @@ class PatientController extends Controller
      *
      * @return \Illuminate\View\View
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Datos demo para pacientes
-        $patients = [
-            [
-                'id' => 1,
-                'name' => 'Juan Pérez',
-                'lastname' => 'González',
-                'age' => 35,
-                'phone' => '+591 70707070',
-                'last_visit' => '2024-06-15',
-                'email' => 'juan.perez@example.com'
-            ],
-            [
-                'id' => 2,
-                'name' => 'María',
-                'lastname' => 'González',
-                'age' => 42,
-                'phone' => '+591 71717171',
-                'last_visit' => '2024-05-22',
-                'email' => 'maria.gonzalez@example.com'
-            ],
-            [
-                'id' => 3,
-                'name' => 'Carlos',
-                'lastname' => 'Rodríguez',
-                'age' => 29,
-                'phone' => '+591 72727272',
-                'last_visit' => '2024-07-03',
-                'email' => 'carlos.rodriguez@example.com'
-            ],
-            [
-                'id' => 4,
-                'name' => 'Ana',
-                'lastname' => 'Martínez',
-                'age' => 50,
-                'phone' => '+591 73737373',
-                'last_visit' => '2024-06-10',
-                'email' => 'ana.martinez@example.com'
-            ],
-            [
-                'id' => 5,
-                'name' => 'Roberto',
-                'lastname' => 'López',
-                'age' => 37,
-                'phone' => '+591 74747474',
-                'last_visit' => '2024-07-01',
-                'email' => 'roberto.lopez@example.com'
-            ],
-            [
-                'id' => 6,
-                'name' => 'Sofía',
-                'lastname' => 'García',
-                'age' => 22,
-                'phone' => '+591 75757575',
-                'last_visit' => '2024-07-12',
-                'email' => 'sofia.garcia@example.com'
-            ],
-            [
-                'id' => 7,
-                'name' => 'Diego',
-                'lastname' => 'Flores',
-                'age' => 45,
-                'phone' => '+591 76767676',
-                'last_visit' => '2024-05-18',
-                'email' => 'diego.flores@example.com'
-            ],
-            [
-                'id' => 8,
-                'name' => 'Patricia',
-                'lastname' => 'Rojas',
-                'age' => 31,
-                'phone' => '+591 77777777',
-                'last_visit' => '2024-06-20',
-                'email' => 'patricia.rojas@example.com'
-            ],
-            [
-                'id' => 9,
-                'name' => 'Miguel',
-                'lastname' => 'Torres',
-                'age' => 58,
-                'phone' => '+591 78787878',
-                'last_visit' => '2024-07-05',
-                'email' => 'miguel.torres@example.com'
-            ],
-            [
-                'id' => 10,
-                'name' => 'Laura',
-                'lastname' => 'Vargas',
-                'age' => 27,
-                'phone' => '+591 79797979',
-                'last_visit' => '2024-06-25',
-                'email' => 'laura.vargas@example.com'
-            ]
+        // Filtros para búsqueda
+        $search = $request->input('search');
+        
+        $query = Patient::query();
+        
+        // Aplicar filtros si existen
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('nombres', 'like', "%{$search}%")
+                  ->orWhere('apellidos', 'like', "%{$search}%")
+                  ->orWhere('ci', 'like', "%{$search}%")
+                  ->orWhere('celular', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+        
+        // Obtener pacientes con paginación
+        $patients = $query->orderBy('created_at', 'desc')->paginate(10);
+        
+        // Estadísticas para gráficos
+        $ageGroups = [
+            '0-18' => Patient::whereRaw('edad <= 18')->count(),
+            '19-35' => Patient::whereRaw('edad > 18 AND edad <= 35')->count(),
+            '36-50' => Patient::whereRaw('edad > 35 AND edad <= 50')->count(),
+            '51-65' => Patient::whereRaw('edad > 50 AND edad <= 65')->count(),
+            '65+' => Patient::whereRaw('edad > 65')->count(),
         ];
-
-        return view('patients.index', compact('patients'));
+        
+        // Conteos para resumen
+        $totalPatients = Patient::count();
+        $newPatientsThisMonth = Patient::whereRaw('MONTH(created_at) = MONTH(CURRENT_DATE())')->count();
+        $activeAppointments = Appointment::where('estado', '!=', 'cancelada')->count();
+        $pendingTreatments = TreatmentPerformed::whereRaw('costo > (SELECT COALESCE(SUM(monto), 0) FROM pagos WHERE pagos.tratamiento_id = tratamientos_realizados.id)')->count();
+        
+        $stats = [
+            'total_patients' => $totalPatients,
+            'new_patients_month' => $newPatientsThisMonth,
+            'active_appointments' => $activeAppointments,
+            'pending_treatments' => $pendingTreatments
+        ];
+        
+        return view('patients.index', compact('patients', 'ageGroups', 'stats', 'search'));
     }
 
     /**
@@ -121,6 +75,42 @@ class PatientController extends Controller
     }
 
     /**
+     * Almacena un nuevo paciente en la base de datos
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function store(Request $request)
+    {
+        // Validación de datos
+        $validator = Validator::make($request->all(), [
+            'nombres' => 'required|string|max:100',
+            'apellidos' => 'required|string|max:100',
+            'fecha_nacimiento' => 'required|date',
+            'genero' => 'required|in:M,F,Otro',
+            'celular' => 'nullable|string|max:15',
+            'email' => 'nullable|email|max:100',
+            'ci' => 'nullable|string|max:12',
+            'ci_exp' => 'nullable|string|max:5',
+            'direccion' => 'nullable|string|max:500',
+            'alergias' => 'nullable|string',
+            'condiciones_medicas' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        // Crear paciente
+        $patient = Patient::create($request->all());
+
+        return redirect()->route('patients.show', $patient->id)
+            ->with('success', 'Paciente creado exitosamente');
+    }
+
+    /**
      * Muestra los detalles de un paciente específico
      *
      * @param  int  $id
@@ -128,95 +118,55 @@ class PatientController extends Controller
      */
     public function show($id)
     {
-        // Datos demo del paciente
-        $patient = [
-            'id' => $id,
-            'name' => 'Juan',
-            'lastname' => 'Pérez',
-            'birthdate' => '1988-05-15',
-            'age' => 35,
-            'gender' => 'M',
-            'phone' => '+591 70707070',
-            'email' => 'juan.perez@example.com',
-            'ci' => '1234567',
-            'ci_exp' => 'LP',
-            'address' => 'Av. 6 de Agosto #123, La Paz',
-            'medical_conditions' => 'Hipertensión',
-            'allergies' => 'Penicilina',
-            'last_visit' => '2024-06-15',
-            'created_at' => '2020-01-15'
-        ];
-
-        // Datos demo del historial de tratamientos
-        $treatments = [
-            [
-                'id' => 1,
-                'date' => '2024-06-15',
-                'diagnosis' => 'Caries',
-                'treatment' => 'Empaste',
-                'tooth' => '36',
-                'cost' => 250.00,
-                'paid' => 250.00,
-                'balance' => 0.00,
-                'status' => 'Completado'
-            ],
-            [
-                'id' => 2,
-                'date' => '2024-05-10',
-                'diagnosis' => 'Gingivitis',
-                'treatment' => 'Limpieza profunda',
-                'tooth' => 'General',
-                'cost' => 350.00,
-                'paid' => 350.00,
-                'balance' => 0.00,
-                'status' => 'Completado'
-            ],
-            [
-                'id' => 3,
-                'date' => '2024-03-22',
-                'diagnosis' => 'Fractura dental',
-                'treatment' => 'Reconstrucción',
-                'tooth' => '11',
-                'cost' => 500.00,
-                'paid' => 500.00,
-                'balance' => 0.00,
-                'status' => 'Completado'
-            ],
-            [
-                'id' => 4,
-                'date' => '2022-11-05',
-                'diagnosis' => 'Pulpitis',
-                'treatment' => 'Endodoncia',
-                'tooth' => '47',
-                'cost' => 800.00,
-                'paid' => 800.00,
-                'balance' => 0.00,
-                'status' => 'Completado'
-            ],
-            [
-                'id' => 5,
-                'date' => '2022-07-18',
-                'diagnosis' => 'Periodontitis',
-                'treatment' => 'Curetaje',
-                'tooth' => 'General',
-                'cost' => 650.00,
-                'paid' => 650.00,
-                'balance' => 0.00,
-                'status' => 'Completado'
-            ]
-        ];
-
-        // Datos demo de las próximas citas
-        $upcoming_appointments = [
-            [
-                'id' => 1,
-                'date' => '2024-08-15',
-                'time' => '10:30',
-                'reason' => 'Control de ortodoncia'
-            ]
-        ];
-
-        return view('patients.show', compact('patient', 'treatments', 'upcoming_appointments'));
+        $patient = Patient::findOrFail($id);
+        
+        // Obtener tratamientos con diagnóstico y pagos
+        $treatments = TreatmentPerformed::with(['diagnosis', 'treatment', 'payments'])
+            ->where('paciente_id', $id)
+            ->orderBy('fecha', 'desc')
+            ->get()
+            ->map(function ($treatment) {
+                // Calcular saldo pendiente
+                $paid = $treatment->payments->sum('monto');
+                $balance = $treatment->costo - $paid;
+                
+                // Determinar estado del tratamiento
+                $status = 'Pendiente';
+                if ($balance <= 0) {
+                    $status = 'Completado';
+                } elseif ($paid > 0) {
+                    $status = 'En proceso';
+                }
+                
+                return [
+                    'id' => $treatment->id,
+                    'date' => $treatment->fecha,
+                    'diagnosis' => $treatment->diagnosis ? $treatment->diagnosis->nombre : $treatment->diagnostico_otro,
+                    'treatment' => $treatment->treatment ? $treatment->treatment->nombre : $treatment->tratamiento_otro,
+                    'tooth' => $treatment->pieza_dental ?? 'General',
+                    'cost' => $treatment->costo,
+                    'paid' => $paid,
+                    'balance' => $balance,
+                    'status' => $status
+                ];
+            })->toArray();
+        
+        // Obtener próximas citas
+        $upcomingAppointments = Appointment::where('paciente_id', $id)
+            ->where('fecha_hora', '>=', now())
+            ->where('estado', '!=', 'cancelada')
+            ->orderBy('fecha_hora', 'asc')
+            ->get()
+            ->map(function ($appointment) {
+                return [
+                    'id' => $appointment->id,
+                    'date' => Carbon::parse($appointment->fecha_hora)->format('Y-m-d'),
+                    'time' => Carbon::parse($appointment->fecha_hora)->format('H:i'),
+                    'reason' => $appointment->motivo
+                ];
+            });
+        
+        return view('patients.show', compact('patient', 'treatments', 'upcomingAppointments'));
     }
 
     /**
@@ -227,22 +177,99 @@ class PatientController extends Controller
      */
     public function edit($id)
     {
-        // Datos demo del paciente
-        $patient = [
-            'id' => $id,
-            'name' => 'Juan',
-            'lastname' => 'Pérez',
-            'birthdate' => '1988-05-15',
-            'gender' => 'M',
-            'phone' => '+591 70707070',
-            'email' => 'juan.perez@example.com',
-            'ci' => '1234567',
-            'ci_exp' => 'LP',
-            'address' => 'Av. 6 de Agosto #123, La Paz',
-            'medical_conditions' => 'Hipertensión',
-            'allergies' => 'Penicilina'
-        ];
-
+        $patient = Patient::findOrFail($id);
         return view('patients.edit', compact('patient'));
+    }
+
+    /**
+     * Actualiza los datos de un paciente específico
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function update(Request $request, $id)
+    {
+        // Validación de datos
+        $validator = Validator::make($request->all(), [
+            'nombres' => 'required|string|max:100',
+            'apellidos' => 'required|string|max:100',
+            'fecha_nacimiento' => 'required|date',
+            'genero' => 'required|in:M,F,Otro',
+            'celular' => 'nullable|string|max:15',
+            'email' => 'nullable|email|max:100',
+            'ci' => 'nullable|string|max:12',
+            'ci_exp' => 'nullable|string|max:5',
+            'direccion' => 'nullable|string|max:500',
+            'alergias' => 'nullable|string',
+            'condiciones_medicas' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        // Actualizar paciente
+        $patient = Patient::findOrFail($id);
+        $patient->update($request->all());
+
+        return redirect()->route('patients.show', $patient->id)
+            ->with('success', 'Datos del paciente actualizados exitosamente');
+    }
+
+    /**
+     * Elimina un paciente (soft delete)
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function destroy($id)
+    {
+        // Verificar si tiene tratamientos o citas asociadas
+        $patient = Patient::findOrFail($id);
+        $hasAppointments = Appointment::where('paciente_id', $id)->exists();
+        $hasTreatments = TreatmentPerformed::where('paciente_id', $id)->exists();
+        
+        if ($hasAppointments || $hasTreatments) {
+            return redirect()->back()
+                ->with('error', 'No se puede eliminar el paciente porque tiene citas o tratamientos asociados');
+        }
+        
+        // Eliminar paciente
+        $patient->delete();
+        
+        return redirect()->route('patients.index')
+            ->with('success', 'Paciente eliminado exitosamente');
+    }
+
+    /**
+     * Búsqueda AJAX de pacientes
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function search(Request $request)
+    {
+        $search = $request->input('q');
+        
+        $patients = Patient::where('nombres', 'like', "%{$search}%")
+            ->orWhere('apellidos', 'like', "%{$search}%")
+            ->orWhere('ci', 'like', "%{$search}%")
+            ->orWhere('celular', 'like', "%{$search}%")
+            ->limit(5)
+            ->get()
+            ->map(function ($patient) {
+                return [
+                    'id' => $patient->id,
+                    'name' => $patient->nombres . ' ' . $patient->apellidos,
+                    'age' => $patient->edad,
+                    'phone' => $patient->celular,
+                    'last_visit' => $patient->fecha_ultima_visita ? $patient->fecha_ultima_visita->format('d/m/Y') : 'Nunca'
+                ];
+            });
+            
+        return response()->json($patients);
     }
 }

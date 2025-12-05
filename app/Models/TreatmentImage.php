@@ -5,23 +5,23 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Payment extends Model
+class TreatmentImage extends Model
 {
     use HasFactory;
     
-    protected $table = 'pagos';
+    protected $table = 'tratamiento_imagenes';
     
     protected $fillable = [
         'tratamiento_id',
-        'fecha',
-        'monto',
-        'metodo_pago',
-        'comprobante',
-        'notas'
+        'ruta_archivo',
+        'nombre_archivo',
+        'tipo_archivo',
+        'descripcion',
+        'tamano',
+        'orden'
     ];
     
     protected $dates = [
-        'fecha',
         'created_at'
     ];
     

@@ -5,34 +5,47 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
 {
     /**
-     * Handle an authentication attempt.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * Mostrar formulario de login
+     */
+    public function showLoginForm()
+    {
+        return view('auth.login');
+    }
+    
+    /**
+     * Procesar intento de login
      */
     public function login(Request $request)
     {
-        // En una aplicación real, validaríamos y autenticaríamos al usuario
-        // Para el demo, simplemente redireccionamos al dashboard
-        
-        return redirect()->route('dashboard');
-    }
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
 
+        if (Auth::attempt($request->only('email', 'password'), $request->filled('remember'))) {
+            $request->session()->regenerate();
+            return redirect()->intended('dashboard');
+        }
+
+        throw ValidationException::withMessages([
+            'email' => [trans('auth.failed')],
+        ]);
+    }
+    
     /**
-     * Log the user out of the application.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * Cerrar sesión
      */
     public function logout(Request $request)
     {
-        // En una aplicación real, desloguearíamos al usuario
-        // Para el demo, simplemente redireccionamos a la página de login
-        
-        return redirect()->route('login');
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect('/');
     }
 }
