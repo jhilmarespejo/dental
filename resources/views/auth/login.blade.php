@@ -29,7 +29,7 @@
         
         body {
             font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: linear-gradient(180deg, var(--primary-color) 10%, #224abe 100%);
+            background: linear-gradient(180deg, var(--primary-color) 10%, #e6e9f3 100%);
             height: 100vh;
         }
         
