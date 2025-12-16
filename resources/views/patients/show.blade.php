@@ -282,14 +282,14 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3 mb-3">
+                        {{-- <div class="col-md-3 mb-3">
                             <div class="card bg-success text-white shadow h-100">
                                 <div class="card-body">
                                     <div class="text-xs fw-bold text-uppercase mb-1">Total Facturado</div>
                                     <div class="h5 mb-0 fw-bold">Bs. {{ number_format($totalCost, 2) }}</div>
                                 </div>
                             </div>
-                        </div>
+                        </div> --}}
                         <div class="col-md-3 mb-3">
                             <div class="card bg-info text-white shadow h-100">
                                 <div class="card-body">
@@ -433,6 +433,7 @@
     $(document).ready(function() {
         // Inicializar DataTable con opciones personalizadas
         $('.datatable').DataTable({
+            destroy: true,
             language: {
                 url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json',
             },

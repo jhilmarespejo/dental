@@ -75,7 +75,7 @@ class TreatmentController extends Controller
             
             return [
                 'id' => $treatment->id,
-                'date' => $treatment->fecha->format('Y-m-d'),
+                'date' => $treatment->fecha,
                 'patient_id' => $treatment->patient->id,
                 'patient_name' => $treatment->patient->nombres . ' ' . $treatment->patient->apellidos,
                 'professional_id' => $treatment->professional->id,
@@ -115,9 +115,32 @@ class TreatmentController extends Controller
         // Obtener catálogos
         $diagnosisList = Diagnosis::orderBy('nombre')->get();
         $treatmentList = Treatment::orderBy('nombre')->get();
-        $professionals = Professional::where('estado', 'activo')->orderBy('apellidos')->orderBy('nombres')->get();
+        $professionals = Professional::where('estado', 'activo')
+            ->orderBy('apellidos')
+            ->orderBy('nombres')
+            ->get();
         
-        return view('treatments.create', compact('patient', 'diagnosisList', 'treatmentList', 'professionals'));
+        // Obtener todos los pacientes para el selector (COMO EL APPOINTMENT CONTROLLER)
+        $patients = Patient::select('id', 'nombres', 'apellidos', 'ci', 'edad', 'celular')
+            ->orderBy('apellidos')
+            ->orderBy('nombres')
+            ->get()
+            ->map(function ($patientItem) {
+                return [
+                    'id' => $patientItem->id,
+                    'name' => $patientItem->nombres . ' ' . $patientItem->apellidos . 
+                            ($patientItem->ci ? ' (' . $patientItem->ci . ')' : '')
+                ];
+            });
+        
+        return view('treatments.create', compact(
+            'patient', 
+            'patients', // ← ESTO ES LO QUE FALTA
+            'diagnosisList', 
+            'treatmentList', 
+            'professionals',
+            'selectedPatientId'
+        ));
     }
 
     /**
@@ -227,7 +250,7 @@ class TreatmentController extends Controller
         $payments = $treatment->payments->map(function ($payment) {
             return [
                 'id' => $payment->id,
-                'date' => $payment->fecha->format('Y-m-d'),
+                'date' => $payment->fecha,
                 'amount' => $payment->monto,
                 'method' => $this->translatePaymentMethod($payment->metodo_pago),
                 'reference' => $payment->comprobante,
@@ -388,6 +411,27 @@ class TreatmentController extends Controller
         
         return $translations[$method] ?? $method;
     }
+    
+
+
+        /**
+     * Obtener pacientes para autocomplete (AJAX)
+     */
+    public function searchPatients(Request $request)
+    {
+        $query = $request->input('q');
+        
+        $patients = Patient::where('nombres', 'like', "%{$query}%")
+            ->orWhere('apellidos', 'like', "%{$query}%")
+            ->orWhere('ci', 'like', "%{$query}%")
+            ->orderBy('apellidos')
+            ->orderBy('nombres')
+            ->limit(10)
+            ->get(['id', 'nombres', 'apellidos', 'ci', 'edad', 'celular']);
+        
+        return response()->json($patients);
+    }
+
     
     /**
      * Buscar catálogos para autocompletar (AJAX)

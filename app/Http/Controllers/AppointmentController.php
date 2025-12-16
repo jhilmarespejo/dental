@@ -12,11 +12,61 @@ use Carbon\Carbon;
 // controlador de citas médicas
 class AppointmentController extends Controller
 {
-    /**
-     * Muestra el listado de citas
-     *
-     * @return \Illuminate\View\View
-     */
+    // Agregar método para calendario de citas
+    public function calendarEvents(Request $request)
+    {
+        $start = Carbon::parse($request->input('start'))->startOfDay();
+        $end = Carbon::parse($request->input('end'))->endOfDay();
+        
+        $appointments = Appointment::with(['patient', 'professional'])
+            ->whereBetween('fecha_hora', [$start, $end])
+            ->get()
+            ->map(function ($appointment) {
+                $statusColors = [
+                    'programada' => '#4e73df', // azul
+                    'confirmada' => '#1cc88a', // verde
+                    'completada' => '#36b9cc', // cyan
+                    'cancelada' => '#e74a3b'   // rojo
+                ];
+                
+                return [
+                    'id' => $appointment->id,
+                    'title' => $appointment->patient->nombres . ' - ' . $appointment->motivo,
+                    'start' => $appointment->fecha_hora->toIso8601String(),
+                    'end' => $appointment->fecha_hora->copy()->addMinutes($appointment->duracion)->toIso8601String(),
+                    'color' => $statusColors[$appointment->estado] ?? '#858796',
+                    'extendedProps' => [
+                        'patient_id' => $appointment->patient->id,
+                        'patient_name' => $appointment->patient->nombres . ' ' . $appointment->patient->apellidos,
+                        'professional_name' => $appointment->professional->nombres . ' ' . $appointment->professional->apellidos,
+                        'reason' => $appointment->motivo,
+                        'status' => $this->translateStatus($appointment->estado),
+                        'notes' => $appointment->notas,
+                        'duration' => $appointment->duracion
+                    ]
+                ];
+            });
+        
+        return response()->json($appointments);
+    }
+
+    // Agregar método para estadísticas
+    public function statistics()
+    {
+        $total = Appointment::count();
+        $completed = Appointment::where('estado', 'completada')->count();
+        $pending = Appointment::where('estado', 'programada')->orWhere('estado', 'confirmada')->count();
+        $cancelled = Appointment::where('estado', 'cancelada')->count();
+        
+        return [
+            'total' => $total,
+            'completed' => $completed,
+            'pending' => $pending,
+            'cancelled' => $cancelled
+        ];
+    }
+
+    // Modificar el método index para incluir estadísticas
     public function index()
     {
         // Obtener citas de hoy
@@ -52,8 +102,11 @@ class AppointmentController extends Controller
                     'status' => $this->translateStatus($appointment->estado)
                 ];
             });
+        
+        // Obtener estadísticas
+        $stats = $this->statistics();
             
-        return view('appointments.index', compact('today', 'upcoming'));
+        return view('appointments.index', compact('today', 'upcoming', 'stats'));
     }
 
     /**
@@ -101,73 +154,77 @@ class AppointmentController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function store(Request $request)
-    {
-        // Validación de datos
-        $validator = Validator::make($request->all(), [
-            'paciente_id' => 'required|exists:pacientes,id',
-            'profesional_id' => 'required|exists:profesionales,id',
-            'fecha' => 'required|date|after_or_equal:today',
-            'hora' => 'required|date_format:H:i',
-            'duracion' => 'required|integer|min:5|max:180',
-            'motivo' => 'required|string|max:250',
-            'notas' => 'nullable|string',
-        ]);
+public function store(Request $request)
+{
+    // Validación de datos
+    $validator = Validator::make($request->all(), [
+        'paciente_id' => 'required|exists:pacientes,id',
+        'profesional_id' => 'required|exists:profesionales,id',
+        'fecha' => 'required|date|after_or_equal:today',
+        'hora' => 'required|date_format:H:i',
+        'duracion' => 'required|integer|min:5|max:180',
+        'motivo' => 'required|string|max:250',
+        'notas' => 'nullable|string',
+    ]);
 
-        if ($validator->fails()) {
-            return redirect()->back()
-                ->withErrors($validator)
-                ->withInput();
-        }
-
-        // Combinar fecha y hora
-        $fechaHora = Carbon::parse($request->input('fecha') . ' ' . $request->input('hora'));
-        
-        // Verificar disponibilidad del profesional
-        $profesionalOcupado = Appointment::where('profesional_id', $request->input('profesional_id'))
-            ->where(function ($query) use ($fechaHora, $request) {
-                $inicio = $fechaHora->copy();
-                $fin = $fechaHora->copy()->addMinutes($request->input('duracion'));
-                
-                $query->where(function ($q) use ($inicio, $fin) {
-                    // Cita que comienza durante otra
-                    $q->where('fecha_hora', '<=', $inicio)
-                      ->whereRaw("DATE_ADD(fecha_hora, INTERVAL duracion MINUTE) > ?", [$inicio]);
-                })->orWhere(function ($q) use ($inicio, $fin) {
-                    // Cita que termina durante otra
-                    $q->where('fecha_hora', '<', $fin)
-                      ->where('fecha_hora', '>=', $inicio);
-                });
-            })
-            ->exists();
-            
-        if ($profesionalOcupado) {
-            return redirect()->back()
-                ->with('error', 'El profesional no está disponible en el horario seleccionado')
-                ->withInput();
-        }
-
-        // Crear cita
-        $appointment = Appointment::create([
-            'paciente_id' => $request->input('paciente_id'),
-            'profesional_id' => $request->input('profesional_id'),
-            'fecha_hora' => $fechaHora,
-            'duracion' => $request->input('duracion'),
-            'estado' => 'programada',
-            'motivo' => $request->input('motivo'),
-            'notas' => $request->input('notas'),
-        ]);
-
-        // Actualizar fecha de última visita del paciente (si es en el futuro, no actualizar)
-        if ($fechaHora->isPast()) {
-            $patient = Patient::find($request->input('paciente_id'));
-            $patient->fecha_ultima_visita = $fechaHora->toDateString();
-            $patient->save();
-        }
-
-        return redirect()->route('appointments.show', $appointment->id)
-            ->with('success', 'Cita creada exitosamente');
+    if ($validator->fails()) {
+        return redirect()->back()
+            ->withErrors($validator)
+            ->withInput();
     }
+
+    // Combinar fecha y hora
+    $fechaHora = Carbon::parse($request->input('fecha') . ' ' . $request->input('hora'));
+    
+    // Asegurar que duracion sea entero
+    $duracion = (int) $request->input('duracion');
+    
+    // Verificar disponibilidad del profesional
+    $profesionalOcupado = Appointment::where('profesional_id', $request->input('profesional_id'))
+        ->where(function ($query) use ($fechaHora, $duracion) {
+            $inicio = $fechaHora->copy();
+            $fin = $fechaHora->copy()->addMinutes($duracion);
+            
+            // Verificar solapamiento de horarios
+            $query->where(function ($q) use ($inicio) {
+                // Cita que comienza durante otra
+                $q->where('fecha_hora', '<=', $inicio)
+                  ->whereRaw("DATE_ADD(fecha_hora, INTERVAL duracion MINUTE) > ?", [$inicio]);
+            })->orWhere(function ($q) use ($inicio, $fin) {
+                // Cita que termina durante otra
+                $q->where('fecha_hora', '<', $fin)
+                  ->where('fecha_hora', '>=', $inicio);
+            });
+        })
+        ->exists();
+        
+    if ($profesionalOcupado) {
+        return redirect()->back()
+            ->with('error', 'El profesional no está disponible en el horario seleccionado')
+            ->withInput();
+    }
+
+    // Crear cita
+    $appointment = Appointment::create([
+        'paciente_id' => $request->input('paciente_id'),
+        'profesional_id' => $request->input('profesional_id'),
+        'fecha_hora' => $fechaHora,
+        'duracion' => $duracion,
+        'estado' => 'programada',
+        'motivo' => $request->input('motivo'),
+        'notas' => $request->input('notas'),
+    ]);
+
+    // Actualizar fecha de última visita del paciente (si la cita ya pasó)
+    if ($fechaHora->isPast()) {
+        $patient = Patient::find($request->input('paciente_id'));
+        $patient->fecha_ultima_visita = $fechaHora->toDateString();
+        $patient->save();
+    }
+
+    return redirect()->route('appointments.show', $appointment->id)
+        ->with('success', 'Cita creada exitosamente');
+}
 
     /**
      * Muestra los detalles de una cita específica
@@ -262,83 +319,68 @@ class AppointmentController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function update(Request $request, $id)
-    {
-        // Validación de datos
-        $validator = Validator::make($request->all(), [
-            'paciente_id' => 'required|exists:pacientes,id',
-            'profesional_id' => 'required|exists:profesionales,id',
-            'fecha' => 'required|date',
-            'hora' => 'required|date_format:H:i',
-            'duracion' => 'required|integer|min:5|max:180',
-            'motivo' => 'required|string|max:250',
-            'estado' => 'required|in:programada,confirmada,completada,cancelada',
-            'notas' => 'nullable|string',
-        ]);
+public function update(Request $request, $id)
+{
+    // Validación de datos
+    $validator = Validator::make($request->all(), [
+        'paciente_id' => 'required|exists:pacientes,id',
+        'profesional_id' => 'required|exists:profesionales,id',
+        'fecha' => 'required|date',
+        'hora' => 'required|date_format:H:i',
+        'duracion' => 'required|integer|min:5|max:180',
+        'motivo' => 'required|string|max:250',
+        'estado' => 'required|in:programada,confirmada,completada,cancelada',
+        'notas' => 'nullable|string',
+    ]);
 
-        if ($validator->fails()) {
-            return redirect()->back()
-                ->withErrors($validator)
-                ->withInput();
-        }
-
-        // Combinar fecha y hora
-        $fechaHora = Carbon::parse($request->input('fecha') . ' ' . $request->input('hora'));
-        
-        // Obtener la cita
-        $appointment = Appointment::findOrFail($id);
-        
-        // Verificar disponibilidad del profesional (excluyendo la cita actual)
-        $profesionalOcupado = Appointment::where('profesional_id', $request->input('profesional_id'))
-            ->where('id', '!=', $id)
-            ->where(function ($query) use ($fechaHora, $request) {
-                $inicio = $fechaHora->copy();
-                $fin = $fechaHora->copy()->addMinutes($request->input('duracion'));
-                
-                $query->where(function ($q) use ($inicio, $fin) {
-                    // Cita que comienza durante otra
-                    $q->where('fecha_hora', '<=', $inicio)
-                      ->whereRaw("DATE_ADD(fecha_hora, INTERVAL duracion MINUTE) > ?", [$inicio]);
-                })->orWhere(function ($q) use ($inicio, $fin) {
-                    // Cita que termina durante otra
-                    $q->where('fecha_hora', '<', $fin)
-                      ->where('fecha_hora', '>=', $inicio);
-                });
-            })
-            ->exists();
-            
-        if ($profesionalOcupado) {
-            return redirect()->back()
-                ->with('error', 'El profesional no está disponible en el horario seleccionado')
-                ->withInput();
-        }
-
-        // Actualizar la cita
-        $appointment->update([
-            'paciente_id' => $request->input('paciente_id'),
-            'profesional_id' => $request->input('profesional_id'),
-            'fecha_hora' => $fechaHora,
-            'duracion' => $request->input('duracion'),
-            'estado' => $request->input('estado'),
-            'motivo' => $request->input('motivo'),
-            'notas' => $request->input('notas'),
-        ]);
-
-        // Actualizar fecha de última visita del paciente si la cita está completada
-        if ($request->input('estado') === 'completada') {
-            $patient = Patient::find($request->input('paciente_id'));
-            
-            // Solo actualizar si es más reciente que la fecha actual
-            if (!$patient->fecha_ultima_visita || $fechaHora->greaterThan($patient->fecha_ultima_visita)) {
-                $patient->fecha_ultima_visita = $fechaHora->toDateString();
-                $patient->save();
-            }
-        }
-
-        return redirect()->route('appointments.show', $appointment->id)
-            ->with('success', 'Cita actualizada exitosamente');
+    if ($validator->fails()) {
+        return redirect()->back()
+            ->withErrors($validator)
+            ->withInput();
     }
 
+    // Preparar datos
+    $fechaHora = Carbon::parse($request->fecha . ' ' . $request->hora);
+    $duracion = (int) $request->duracion;
+    
+    // Obtener la cita
+    $appointment = Appointment::findOrFail($id);
+    
+    // Verificar disponibilidad del profesional (excluyendo esta cita)
+    $profesionalOcupado = Appointment::where('profesional_id', $request->profesional_id)
+        ->where('id', '!=', $id)
+        ->where('fecha_hora', '<', $fechaHora->copy()->addMinutes($duracion))
+        ->whereRaw("DATE_ADD(fecha_hora, INTERVAL duracion MINUTE) > ?", [$fechaHora])
+        ->exists();
+        
+    if ($profesionalOcupado) {
+        return redirect()->back()
+            ->with('error', 'El profesional no está disponible en el horario seleccionado')
+            ->withInput();
+    }
+
+    // Actualizar la cita
+    $appointment->update([
+        'paciente_id' => $request->paciente_id,
+        'profesional_id' => $request->profesional_id,
+        'fecha_hora' => $fechaHora,
+        'duracion' => $duracion,
+        'estado' => $request->estado,
+        'motivo' => $request->motivo,
+        'notas' => $request->notas,
+        // updated_at se actualizará automáticamente
+    ]);
+
+    // Actualizar fecha de última visita del paciente si la cita está completada
+    if ($request->estado === 'completada') {
+        Patient::where('id', $request->paciente_id)
+            ->update(['fecha_ultima_visita' => $fechaHora->toDateString()]);
+    }
+
+    return redirect()->route('appointments.show', $appointment->id)
+        ->with('success', 'Cita actualizada exitosamente');
+}
+    
     /**
      * Elimina una cita
      *
@@ -417,5 +459,32 @@ class AppointmentController extends Controller
         ];
         
         return $translations[$status] ?? $status;
+    }
+
+
+    /**
+     * Obtener citas de un paciente para AJAX
+     *
+     * @param int $patientId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getPatientAppointments($patientId)
+    {
+        $appointments = Appointment::where('paciente_id', $patientId)
+            ->where('fecha_hora', '>=', now()->subMonths(3)) // Últimos 3 meses
+            ->orderBy('fecha_hora', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($appointment) {
+                return [
+                    'id' => $appointment->id,
+                    'fecha_hora' => $appointment->fecha_hora->toIso8601String(),
+                    'motivo' => $appointment->motivo,
+                    'estado' => $appointment->estado,
+                    'profesional_nombre' => $appointment->professional->nombres . ' ' . $appointment->professional->apellidos
+                ];
+            });
+        
+        return response()->json($appointments);
     }
 }

@@ -8,6 +8,9 @@
         <h1 class="h3 mb-0 text-gray-800">
             <i class="fas fa-plus-circle text-primary me-2"></i> Nuevo Tratamiento
         </h1>
+        <a href="{{ route('treatments.index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
     </div>
 
     <div class="card shadow mb-4">
@@ -26,34 +29,44 @@
                                 <div class="row">
                                     <div class="col-md-12 mb-3">
                                         <label for="paciente_id" class="form-label">Paciente <span class="text-danger">*</span></label>
-                                        <select class="form-select select2" id="paciente_id" name="paciente_id" required>
-                                            @if(isset($patient))
-                                                <option value="{{ $patient->id }}" selected>{{ $patient->apellidos }}, {{ $patient->nombres }}</option>
-                                            @else
-                                                <option value="">Seleccionar paciente...</option>
-                                            @endif
+                                        <select class="form-select select2 @error('paciente_id') is-invalid @enderror" 
+                                                id="paciente_id" name="paciente_id" required
+                                                data-placeholder="Buscar paciente...">
+                                            <option value=""></option>
+                                            @foreach($patients as $patientItem)
+                                                <option value="{{ $patientItem['id'] }}" 
+                                                    {{ old('paciente_id', $selectedPatientId) == $patientItem['id'] ? 'selected' : '' }}>
+                                                    {{ $patientItem['name'] }}
+                                                </option>
+                                            @endforeach
                                         </select>
                                         @error('paciente_id')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
+                                        <div class="mt-2">
+                                            <a href="{{ route('patients.create') }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-user-plus"></i> Nuevo Paciente
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
                                 
-                                <div id="patient-info" class="{{ isset($patient) ? '' : 'd-none' }}">
+                                <div id="patient-info" class="{{ $patient ? '' : 'd-none' }}">
+                                    @if($patient)
                                     <div class="alert alert-info">
                                         <div class="row">
                                             <div class="col-md-4">
-                                                <strong>CI:</strong> <span id="patient-ci">{{ $patient->ci ?? '' }}</span>
+                                                <strong>CI:</strong> {{ $patient->ci ?? 'No registrado' }}
                                             </div>
                                             <div class="col-md-4">
-                                                <strong>Edad:</strong> <span id="patient-age">{{ $patient->edad ?? '' }}</span> años
+                                                <strong>Edad:</strong> {{ $patient->edad ?? 'N/A' }} años
                                             </div>
                                             <div class="col-md-4">
-                                                <strong>Teléfono:</strong> <span id="patient-phone">{{ $patient->celular ?? '' }}</span>
+                                                <strong>Teléfono:</strong> {{ $patient->celular ?? 'No registrado' }}
                                             </div>
                                         </div>
                                         
-                                        @if(isset($patient) && ($patient->alergias || $patient->condiciones_medicas))
+                                        @if($patient->alergias || $patient->condiciones_medicas)
                                         <hr>
                                         <div class="row mt-2">
                                             @if($patient->alergias)
@@ -70,12 +83,14 @@
                                         </div>
                                         @endif
                                     </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
+                <!-- Resto del formulario se mantiene igual... -->
                 <!-- Datos del tratamiento -->
                 <div class="row mb-4">
                     <div class="col-md-12">
@@ -87,23 +102,28 @@
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label for="fecha" class="form-label">Fecha <span class="text-danger">*</span></label>
-                                        <input type="date" class="form-control" id="fecha" name="fecha" value="{{ old('fecha', date('Y-m-d')) }}" required>
+                                        <input type="date" class="form-control @error('fecha') is-invalid @enderror" 
+                                               id="fecha" name="fecha" value="{{ old('fecha', date('Y-m-d')) }}" required>
                                         @error('fecha')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label for="profesional_id" class="form-label">Profesional <span class="text-danger">*</span></label>
-                                        <select class="form-select select2" id="profesional_id" name="profesional_id" required>
-                                            <option value="">Seleccionar profesional...</option>
+                                        <select class="form-select select2 @error('profesional_id') is-invalid @enderror" 
+                                                id="profesional_id" name="profesional_id" required
+                                                data-placeholder="Seleccionar profesional...">
+                                            <option value=""></option>
                                             @foreach($professionals as $professional)
-                                                <option value="{{ $professional->id }}" {{ old('profesional_id') == $professional->id ? 'selected' : '' }}>
-                                                    {{ $professional->apellidos }}, {{ $professional->nombres }} {{ $professional->especialidad ? "($professional->especialidad)" : '' }}
+                                                <option value="{{ $professional->id }}" 
+                                                    {{ old('profesional_id') == $professional->id ? 'selected' : '' }}>
+                                                    {{ $professional->apellidos }}, {{ $professional->nombres }} 
+                                                    {{ $professional->especialidad ? "($professional->especialidad)" : '' }}
                                                 </option>
                                             @endforeach
                                         </select>
                                         @error('profesional_id')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -111,23 +131,27 @@
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label for="diagnostico_id" class="form-label">Diagnóstico</label>
-                                        <select class="form-select select2-with-tags" id="diagnostico_id" name="diagnostico_id">
-                                            <option value="">Seleccionar o ingresar diagnóstico...</option>
+                                        <select class="form-select select2-with-tags @error('diagnostico_id') is-invalid @enderror" 
+                                                id="diagnostico_id" name="diagnostico_id"
+                                                data-placeholder="Seleccionar o ingresar diagnóstico...">
+                                            <option value=""></option>
                                             @foreach($diagnosisList as $diagnosis)
-                                                <option value="{{ $diagnosis->id }}" {{ old('diagnostico_id') == $diagnosis->id ? 'selected' : '' }}>
+                                                <option value="{{ $diagnosis->id }}" 
+                                                    {{ old('diagnostico_id') == $diagnosis->id ? 'selected' : '' }}>
                                                     {{ $diagnosis->nombre }}
                                                 </option>
                                             @endforeach
                                         </select>
                                         @error('diagnostico_id')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                     <div class="col-md-6 mb-3 {{ old('diagnostico_otro') ? '' : 'd-none' }}" id="diagnostico_otro_container">
                                         <label for="diagnostico_otro" class="form-label">Otro diagnóstico</label>
-                                        <input type="text" class="form-control" id="diagnostico_otro" name="diagnostico_otro" value="{{ old('diagnostico_otro') }}">
+                                        <input type="text" class="form-control @error('diagnostico_otro') is-invalid @enderror" 
+                                               id="diagnostico_otro" name="diagnostico_otro" value="{{ old('diagnostico_otro') }}">
                                         @error('diagnostico_otro')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -135,8 +159,10 @@
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label for="tratamiento_id" class="form-label">Tratamiento</label>
-                                        <select class="form-select select2-with-tags" id="tratamiento_id" name="tratamiento_id">
-                                            <option value="">Seleccionar o ingresar tratamiento...</option>
+                                        <select class="form-select select2-with-tags @error('tratamiento_id') is-invalid @enderror" 
+                                                id="tratamiento_id" name="tratamiento_id"
+                                                data-placeholder="Seleccionar o ingresar tratamiento...">
+                                            <option value=""></option>
                                             @foreach($treatmentList as $treatmentItem)
                                                 <option value="{{ $treatmentItem->id }}" 
                                                     data-cost="{{ $treatmentItem->costo_sugerido }}"
@@ -146,14 +172,15 @@
                                             @endforeach
                                         </select>
                                         @error('tratamiento_id')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                     <div class="col-md-6 mb-3 {{ old('tratamiento_otro') ? '' : 'd-none' }}" id="tratamiento_otro_container">
                                         <label for="tratamiento_otro" class="form-label">Otro tratamiento</label>
-                                        <input type="text" class="form-control" id="tratamiento_otro" name="tratamiento_otro" value="{{ old('tratamiento_otro') }}">
+                                        <input type="text" class="form-control @error('tratamiento_otro') is-invalid @enderror" 
+                                               id="tratamiento_otro" name="tratamiento_otro" value="{{ old('tratamiento_otro') }}">
                                         @error('tratamiento_otro')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -161,26 +188,31 @@
                                 <div class="row">
                                     <div class="col-md-4 mb-3">
                                         <label for="pieza_dental" class="form-label">Pieza Dental</label>
-                                        <input type="text" class="form-control" id="pieza_dental" name="pieza_dental" value="{{ old('pieza_dental') }}" placeholder="Ej: 36, 11-13">
+                                        <input type="text" class="form-control @error('pieza_dental') is-invalid @enderror" 
+                                               id="pieza_dental" name="pieza_dental" value="{{ old('pieza_dental') }}" 
+                                               placeholder="Ej: 36, 11-13">
                                         @error('pieza_dental')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label for="costo" class="form-label">Costo (Bs.) <span class="text-danger">*</span></label>
-                                        <input type="number" step="0.01" min="0" class="form-control" id="costo" name="costo" value="{{ old('costo') }}" required>
+                                        <input type="number" step="0.01" min="0" 
+                                               class="form-control @error('costo') is-invalid @enderror" 
+                                               id="costo" name="costo" value="{{ old('costo') }}" required>
                                         @error('costo')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label for="cita_id" class="form-label">Cita asociada</label>
-                                        <select class="form-select" id="cita_id" name="cita_id">
+                                        <select class="form-select @error('cita_id') is-invalid @enderror" 
+                                                id="cita_id" name="cita_id">
                                             <option value="">Ninguna</option>
                                             <!-- Las citas se cargarán dinámicamente via AJAX cuando se seleccione un paciente -->
                                         </select>
                                         @error('cita_id')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -188,9 +220,10 @@
                                 <div class="row">
                                     <div class="col-md-12 mb-3">
                                         <label for="observaciones" class="form-label">Observaciones</label>
-                                        <textarea class="form-control" id="observaciones" name="observaciones" rows="3">{{ old('observaciones') }}</textarea>
+                                        <textarea class="form-control @error('observaciones') is-invalid @enderror" 
+                                                  id="observaciones" name="observaciones" rows="3">{{ old('observaciones') }}</textarea>
                                         @error('observaciones')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -205,36 +238,53 @@
                         <div class="card">
                             <div class="card-header">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="register_initial_payment" name="register_initial_payment" {{ old('register_initial_payment') ? 'checked' : '' }}>
-                                    <label class="form-check-label font-weight-bold text-primary" for="register_initial_payment">Registrar pago inicial</label>
+                                    <input class="form-check-input" type="checkbox" 
+                                           id="register_initial_payment" name="register_initial_payment" 
+                                           {{ old('register_initial_payment') ? 'checked' : '' }}>
+                                    <label class="form-check-label font-weight-bold text-primary" 
+                                           for="register_initial_payment">Registrar pago inicial</label>
                                 </div>
                             </div>
-                            <div class="card-body {{ old('register_initial_payment') ? '' : 'd-none' }}" id="payment_section">
+                            <div class="card-body {{ old('register_initial_payment') ? '' : 'd-none' }}" 
+                                 id="payment_section">
                                 <div class="row">
                                     <div class="col-md-4 mb-3">
-                                        <label for="monto_pago_inicial" class="form-label">Monto (Bs.) <span class="text-danger">*</span></label>
-                                        <input type="number" step="0.01" min="0" class="form-control" id="monto_pago_inicial" name="monto_pago_inicial" value="{{ old('monto_pago_inicial') }}">
+                                        <label for="monto_pago_inicial" class="form-label">Monto (Bs.)</label>
+                                        <input type="number" step="0.01" min="0" 
+                                               class="form-control @error('monto_pago_inicial') is-invalid @enderror" 
+                                               id="monto_pago_inicial" name="monto_pago_inicial" 
+                                               value="{{ old('monto_pago_inicial') }}">
                                         @error('monto_pago_inicial')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                     <div class="col-md-4 mb-3">
-                                        <label for="metodo_pago" class="form-label">Método de pago <span class="text-danger">*</span></label>
-                                        <select class="form-select" id="metodo_pago" name="metodo_pago">
-                                            <option value="efectivo" {{ old('metodo_pago') == 'efectivo' ? 'selected' : '' }}>Efectivo</option>
-                                            <option value="tarjeta" {{ old('metodo_pago') == 'tarjeta' ? 'selected' : '' }}>Tarjeta de Crédito/Débito</option>
-                                            <option value="transferencia" {{ old('metodo_pago') == 'transferencia' ? 'selected' : '' }}>Transferencia Bancaria</option>
-                                            <option value="otro" {{ old('metodo_pago') == 'otro' ? 'selected' : '' }}>Otro</option>
+                                        <label for="metodo_pago" class="form-label">Método de pago</label>
+                                        <select class="form-select @error('metodo_pago') is-invalid @enderror" 
+                                                id="metodo_pago" name="metodo_pago">
+                                            <option value="efectivo" {{ old('metodo_pago') == 'efectivo' ? 'selected' : '' }}>
+                                                Efectivo
+                                            </option>
+                                            <option value="tarjeta" {{ old('metodo_pago') == 'tarjeta' ? 'selected' : '' }}>
+                                                Tarjeta de Crédito/Débito
+                                            </option>
+                                            <option value="transferencia" {{ old('metodo_pago') == 'transferencia' ? 'selected' : '' }}>
+                                                Transferencia Bancaria
+                                            </option>
+                                            <option value="otro" {{ old('metodo_pago') == 'otro' ? 'selected' : '' }}>
+                                                Otro
+                                            </option>
                                         </select>
                                         @error('metodo_pago')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label for="comprobante" class="form-label">Comprobante/Referencia</label>
-                                        <input type="text" class="form-control" id="comprobante" name="comprobante" value="{{ old('comprobante') }}">
+                                        <input type="text" class="form-control @error('comprobante') is-invalid @enderror" 
+                                               id="comprobante" name="comprobante" value="{{ old('comprobante') }}">
                                         @error('comprobante')
-                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                            <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
                                 </div>
@@ -253,13 +303,14 @@
                             <div class="card-body">
                                 <div class="mb-3">
                                     <label for="imagenes" class="form-label">Adjuntar imágenes</label>
-                                    <input type="file" class="form-control" id="imagenes" name="imagenes[]" multiple accept="image/*">
+                                    <input type="file" class="form-control @error('imagenes') is-invalid @enderror" 
+                                           id="imagenes" name="imagenes[]" multiple accept="image/*">
                                     <div class="form-text">Puedes seleccionar múltiples imágenes (máximo 2MB cada una)</div>
                                     @error('imagenes')
-                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                        <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                     @error('imagenes.*')
-                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                        <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                                 
@@ -299,14 +350,16 @@
     .image-preview .remove-btn {
         position: absolute;
         top: 5px;
-        right: 20px;
-        background: rgba(255, 255, 255, 0.7);
+        right: 5px;
+        background: rgba(255, 0, 0, 0.7);
+        color: white;
         border-radius: 50%;
         width: 25px;
         height: 25px;
         text-align: center;
         line-height: 25px;
         cursor: pointer;
+        border: none;
     }
     
     .image-preview img {
@@ -321,34 +374,18 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
-        // Inicializar Select2 para pacientes
+        // Inicializar Select2 para pacientes (EXACTAMENTE COMO EN APPOINTMENTS)
         $('#paciente_id').select2({
             theme: 'bootstrap-5',
-            placeholder: 'Seleccionar paciente',
-            allowClear: true,
-            ajax: {
-                url: '{{ route("api.patients") }}',
-                dataType: 'json',
-                delay: 250,
-                data: function(params) {
-                    return {
-                        q: params.term,
-                        limit: 10
-                    };
-                },
-                processResults: function(data) {
-                    return {
-                        results: $.map(data, function(item) {
-                            return {
-                                text: item.nombre_completo,
-                                id: item.id,
-                                data: item
-                            };
-                        })
-                    };
-                },
-                cache: true
-            }
+            placeholder: 'Buscar paciente...',
+            allowClear: true
+        });
+        
+        // Inicializar Select2 para profesionales
+        $('#profesional_id').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Seleccionar profesional...',
+            allowClear: true
         });
         
         // Manejar cambio de paciente
@@ -357,37 +394,19 @@
             const patientInfo = $('#patient-info');
             
             if ($(this).val()) {
-                // Mostrar información del paciente
-                const patientData = selectedOption.data('data');
-                
-                if (patientData) {
-                    $('#patient-ci').text(patientData.ci || 'No registrado');
-                    $('#patient-age').text(patientData.edad || 'N/A');
-                    $('#patient-phone').text(patientData.telefono || 'No registrado');
-                    
-                    // Cargar las citas disponibles para este paciente
-                    loadPatientAppointments($(this).val());
-                }
-                
                 patientInfo.removeClass('d-none');
+                // Cargar las citas disponibles para este paciente
+                loadPatientAppointments($(this).val());
             } else {
                 patientInfo.addClass('d-none');
-                
-                // Limpiar citas
                 $('#cita_id').empty().append('<option value="">Ninguna</option>');
             }
-        });
-        
-        // Inicializar Select2 para profesionales
-        $('#profesional_id').select2({
-            theme: 'bootstrap-5',
-            placeholder: 'Seleccionar profesional'
         });
         
         // Inicializar Select2 para diagnósticos
         $('#diagnostico_id').select2({
             theme: 'bootstrap-5',
-            placeholder: 'Seleccionar o ingresar diagnóstico',
+            placeholder: 'Seleccionar o ingresar diagnóstico...',
             allowClear: true,
             tags: true,
             createTag: function(params) {
@@ -416,7 +435,7 @@
         // Inicializar Select2 para tratamientos
         $('#tratamiento_id').select2({
             theme: 'bootstrap-5',
-            placeholder: 'Seleccionar o ingresar tratamiento',
+            placeholder: 'Seleccionar o ingresar tratamiento...',
             allowClear: true,
             tags: true,
             createTag: function(params) {
@@ -473,9 +492,9 @@
                 reader.onload = function(e) {
                     const previewHTML = `
                         <div class="col-md-3 image-preview">
-                            <div class="remove-btn" data-index="${i}">
-                                <i class="fas fa-times text-danger"></i>
-                            </div>
+                            <button type="button" class="remove-btn" data-index="${i}">
+                                <i class="fas fa-times"></i>
+                            </button>
                             <img src="${e.target.result}" alt="Vista previa">
                             <div class="small text-muted mt-1">${file.name}</div>
                         </div>
@@ -489,7 +508,8 @@
         });
         
         // Eliminar vista previa de imagen
-        $(document).on('click', '.remove-btn', function() {
+        $(document).on('click', '.remove-btn', function(e) {
+            e.preventDefault();
             const index = $(this).data('index');
             const input = document.getElementById('imagenes');
             const dt = new DataTransfer();
@@ -506,8 +526,11 @@
         
         // Cargar citas del paciente
         function loadPatientAppointments(patientId) {
+            // Construir URL correctamente
+            const url = `/api/patients/${patientId}/appointments`;
+            
             $.ajax({
-                url: `/api/patients/${patientId}/appointments`,
+                url: url,
                 method: 'GET',
                 dataType: 'json',
                 success: function(data) {
@@ -520,7 +543,9 @@
                     if (data.length > 0) {
                         $.each(data, function(index, appointment) {
                             const fecha = new Date(appointment.fecha_hora);
-                            const optionText = `${fecha.toLocaleDateString()} ${fecha.toLocaleTimeString()} - ${appointment.motivo}`;
+                            const optionText = fecha.toLocaleDateString('es-ES') + ' ' + 
+                                            fecha.toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}) + 
+                                            ' - ' + appointment.motivo;
                             citaSelect.append(new Option(optionText, appointment.id));
                         });
                     }
@@ -530,10 +555,10 @@
                 }
             });
         }
-        
-        // Si hay un paciente seleccionado inicialmente, cargar sus citas
-        @if(isset($patient))
-            loadPatientAppointments({{ $patient->id }});
+        // Si hay un paciente seleccionado inicialmente
+        @if($selectedPatientId)
+            // Cargar citas del paciente seleccionado
+            loadPatientAppointments({{ $selectedPatientId }});
         @endif
     });
 </script>

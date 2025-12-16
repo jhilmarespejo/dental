@@ -460,7 +460,7 @@ class ReportController extends Controller
                     'paciente' => optional($payment->treatmentPerformed)->patient 
                                 ? optional($payment->treatmentPerformed->patient)->nombres . ' ' . optional($payment->treatmentPerformed->patient)->apellidos
                                 : 'N/A',
-                    'fecha' => $payment->fecha->format('Y-m-d'),
+                    'fecha' => $payment->fecha,
                     'monto' => $payment->monto,
                     'metodo_pago' => $payment->metodo_pago,
                     'comprobante' => $payment->comprobante,

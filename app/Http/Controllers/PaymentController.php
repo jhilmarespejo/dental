@@ -53,7 +53,7 @@ class PaymentController extends Controller
         $formattedPayments = $payments->map(function ($payment) {
             return [
                 'id' => $payment->id,
-                'date' => $payment->fecha->format('Y-m-d'),
+                'date' => $payment->fecha,
                 'amount' => $payment->monto,
                 'method' => $this->translatePaymentMethod($payment->metodo_pago),
                 'patient_id' => $payment->treatmentPerformed->patient->id,
@@ -87,6 +87,7 @@ class PaymentController extends Controller
             'month' => $totalMonth,
             'methods' => $methodStats
         ];
+        // dump($stats);   exit;
         
         return view('payments.index', compact('formattedPayments', 'payments', 'stats', 'search', 'dateFrom', 'dateTo', 'method'));
     }

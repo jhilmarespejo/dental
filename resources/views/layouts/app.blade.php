@@ -399,6 +399,10 @@
                 width: 100%;
             }
         }
+    table tr td a {
+        text-decoration: none;   /*elimina la línea*/
+        /* color: inherit;          opcional: usa el mismo color del texto */
+    }
     </style>
     @stack('styles')
 </head>
@@ -637,68 +641,165 @@
     </div>
     
     <!-- New Appointment Modal -->
-    <div class="modal fade" id="newAppointmentModal" tabindex="-1" aria-labelledby="newAppointmentModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="newAppointmentModalLabel">Nueva Cita</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form id="quickAppointmentForm" action="{{ route('appointments.store') }}" method="POST">
-                    @csrf
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="paciente_id" class="form-label">Paciente</label>
-                            <select id="paciente_id" name="paciente_id" class="form-select select2" required>
-                                <option value="">Seleccionar paciente...</option>
-                                <!-- Las opciones se cargarán dinámicamente -->
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="profesional_id" class="form-label">Profesional</label>
-                            <select id="profesional_id" name="profesional_id" class="form-select select2" required>
-                                <option value="">Seleccionar profesional...</option>
-                                <!-- Las opciones se cargarán dinámicamente -->
-                            </select>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="fecha" class="form-label">Fecha</label>
-                                <input type="date" class="form-control" id="fecha" name="fecha" required min="{{ date('Y-m-d') }}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="hora" class="form-label">Hora</label>
-                                <input type="time" class="form-control" id="hora" name="hora" required>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="duracion" class="form-label">Duración (minutos)</label>
-                            <select id="duracion" name="duracion" class="form-select">
-                                <option value="15">15 minutos</option>
-                                <option value="30" selected>30 minutos</option>
-                                <option value="45">45 minutos</option>
-                                <option value="60">1 hora</option>
-                                <option value="90">1 hora 30 minutos</option>
-                                <option value="120">2 horas</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="motivo" class="form-label">Motivo de la cita</label>
-                            <input type="text" class="form-control" id="motivo" name="motivo" required maxlength="250">
-                        </div>
-                        <div class="mb-3">
-                            <label for="notas" class="form-label">Notas</label>
-                            <textarea class="form-control" id="notas" name="notas" rows="3"></textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Guardar cita</button>
-                    </div>
-                </form>
+    <!-- New Appointment Modal -->
+<div class="modal fade" id="newAppointmentModal" tabindex="-1" aria-labelledby="newAppointmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newAppointmentModalLabel">Nueva Cita</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            <form action="{{ route('appointments.store') }}" method="POST" id="quickAppointmentForm">
+                @csrf
+                <div class="modal-body">
+                    <!-- Mensajes de error -->
+                    <div class="alert alert-danger d-none" id="formErrors">
+                        <ul class="mb-0" id="errorList"></ul>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="paciente_id" class="form-label required">Paciente</label>
+                            <select id="paciente_id" name="paciente_id" class="form-select @error('paciente_id') is-invalid @enderror" required>
+                                <option value="">Seleccionar paciente...</option>
+                                @foreach($patients ?? [] as $patient)
+                                    <option value="{{ $patient['id'] }}" 
+                                            {{ old('paciente_id') == $patient['id'] ? 'selected' : '' }}>
+                                        {{ $patient['name'] }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('paciente_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <div class="mt-2">
+                                <a href="{{ route('patients.create') }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                    <i class="fas fa-user-plus"></i> Nuevo Paciente
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="profesional_id" class="form-label required">Profesional</label>
+                            <select id="profesional_id" name="profesional_id" class="form-select @error('profesional_id') is-invalid @enderror" required>
+                                <option value="">Seleccionar profesional...</option>
+                                @foreach($professionals ?? [] as $professional)
+                                    <option value="{{ $professional['id'] }}" 
+                                            {{ old('profesional_id') == $professional['id'] ? 'selected' : '' }}>
+                                        {{ $professional['name'] }} 
+                                        @if($professional['specialty'])
+                                            - {{ $professional['specialty'] }}
+                                        @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('profesional_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="fecha" class="form-label required">Fecha</label>
+                            <input type="date" 
+                                   class="form-control @error('fecha') is-invalid @enderror" 
+                                   id="fecha" 
+                                   name="fecha" 
+                                   value="{{ old('fecha', date('Y-m-d')) }}" 
+                                   required 
+                                   min="{{ date('Y-m-d') }}">
+                            @error('fecha')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="hora" class="form-label required">Hora</label>
+                            <input type="time" 
+                                   class="form-control @error('hora') is-invalid @enderror" 
+                                   id="hora" 
+                                   name="hora" 
+                                   value="{{ old('hora', date('H:00', strtotime('+1 hour'))) }}" 
+                                   required 
+                                   step="300">
+                            @error('hora')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="duracion" class="form-label required">Duración</label>
+                            <select id="duracion" name="duracion" class="form-select @error('duracion') is-invalid @enderror" required>
+                                <option value="15" {{ old('duracion', '30') == '15' ? 'selected' : '' }}>15 minutos</option>
+                                <option value="30" {{ old('duracion', '30') == '30' ? 'selected' : '' }}>30 minutos</option>
+                                <option value="45" {{ old('duracion') == '45' ? 'selected' : '' }}>45 minutos</option>
+                                <option value="60" {{ old('duracion') == '60' ? 'selected' : '' }}>1 hora</option>
+                                <option value="90" {{ old('duracion') == '90' ? 'selected' : '' }}>1 hora 30 minutos</option>
+                                <option value="120" {{ old('duracion') == '120' ? 'selected' : '' }}>2 horas</option>
+                            </select>
+                            @error('duracion')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="motivo" class="form-label required">Motivo</label>
+                            <input type="text" 
+                                   class="form-control @error('motivo') is-invalid @enderror" 
+                                   id="motivo" 
+                                   name="motivo" 
+                                   value="{{ old('motivo') }}" 
+                                   required 
+                                   maxlength="250"
+                                   placeholder="Ej: Revisión, Limpieza, Tratamiento...">
+                            @error('motivo')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notas" class="form-label">Notas Adicionales</label>
+                        <textarea class="form-control @error('notas') is-invalid @enderror" 
+                                  id="notas" 
+                                  name="notas" 
+                                  rows="3"
+                                  placeholder="Observaciones, instrucciones especiales...">{{ old('notas') }}</textarea>
+                        @error('notas')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    
+                    <!-- Vista previa de la cita -->
+                    <div class="card mt-3 d-none" id="appointmentPreview">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">Vista Previa de la Cita</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Fecha:</strong> <span id="previewDate"></span></p>
+                                    <p><strong>Hora:</strong> <span id="previewTime"></span></p>
+                                    <p><strong>Duración:</strong> <span id="previewDuration"></span> minutos</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Motivo:</strong> <span id="previewReason"></span></p>
+                                    <p><strong>Notas:</strong> <span id="previewNotes" class="text-muted">Ninguna</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <i class="fas fa-calendar-plus"></i> Guardar Cita
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
     
     <!-- Logout Modal-->
     <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">

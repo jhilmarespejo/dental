@@ -50,6 +50,9 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/appointments/{appointment}', [AppointmentController::class, 'update'])->name('appointments.update');
     Route::delete('/appointments/{appointment}', [AppointmentController::class, 'destroy'])->name('appointments.destroy');
     Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.update.status');
+    Route::get('/appointments/calendar-events', [AppointmentController::class, 'calendarEvents'])->name('appointments.calendar.events');
+    Route::get('/api/patients/{patient}/appointments', [AppointmentController::class, 'getPatientAppointments'])->name('api.patient.appointments');
+
     
     // Tratamientos
     Route::get('/treatments', [TreatmentController::class, 'index'])->name('treatments.index');
@@ -61,7 +64,11 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/treatments/{treatment}', [TreatmentController::class, 'destroy'])->name('treatments.destroy');
     Route::get('/catalog/search', [TreatmentController::class, 'searchCatalog'])->name('catalog.search');
     
-    // Pagos
+    
+    // Dentro del grupo de rutas protegidas:
+    Route::get('/patients/search', [TreatmentController::class, 'searchPatients'])->name('patients.search');
+    
+    // Pagos payments
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
     Route::get('/payments/pending', [PaymentController::class, 'pendingPayments'])->name('payments.pending');
     Route::get('/payments/create/{treatment?}', [PaymentController::class, 'create'])->name('payments.create');

@@ -89,7 +89,7 @@
         <div class="card-body">
             @if($formattedTreatments->count() > 0)
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover datatable" width="100%" cellspacing="0">
+                    <table class="table table-bordered table-hover datatable_tratments" width="100%" cellspacing="0">
                         <thead>
                             <tr>
                                 <th>Fecha</th>
@@ -196,7 +196,7 @@
                     @endphp
                     
                     <div class="row">
-                        <div class="col-md-4 mb-3">
+                        {{-- <div class="col-md-4 mb-3">
                             <div class="card border-left-primary shadow h-100 py-2">
                                 <div class="card-body">
                                     <div class="row no-gutters align-items-center">
@@ -212,7 +212,7 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div> --}}
                         <div class="col-md-4 mb-3">
                             <div class="card border-left-success shadow h-100 py-2">
                                 <div class="card-body">
@@ -299,7 +299,8 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Inicializar DataTable con opciones personalizadas
-        $('.datatable').DataTable({
+        $('.datatable_treatments').DataTable({
+            destroy: true,
             language: {
                 url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json',
             },

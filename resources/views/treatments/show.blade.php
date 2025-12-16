@@ -54,7 +54,7 @@
                                 </tr>
                                 <tr>
                                     <th>Fecha:</th>
-                                    <td>{{ $treatment->fecha->format('d/m/Y') }}</td>
+                                    <td>{{ $treatment->fecha }}</td>
                                 </tr>
                                 @if($treatment->appointment)
                                 <tr>

@@ -45,4 +45,6 @@ class Appointment extends Model
     {
         return $this->hasMany(TreatmentPerformed::class, 'cita_id');
     }
+
+
 }
